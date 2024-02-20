@@ -1,9 +1,9 @@
 #include <string.h>
-#include <driver/i2c.h>
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
-#include <esp_log.h>
-#include <esp_zigbee_core.h>
+#include "driver/i2c.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "esp_log.h"
+#include "esp_zigbee_core.h"
 #include "config.h"
 #include "led.h"
 #include "scd40.h"

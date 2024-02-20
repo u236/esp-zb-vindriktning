@@ -1,10 +1,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "config.h"
-#include "esp_log.h"
 #include "nvs_flash.h"
 #include "led_strip.h"
-#include "led.h"
 #include "reset.h"
 #include "zigbee.h"
 
@@ -24,7 +22,7 @@ static void set_level(uint8_t *level, uint8_t target)
 
 static void set_color(uint16_t min, uint16_t max, uint16_t value, uint8_t level, uint8_t *color)
 {
-    uint16_t mid = (max - min) / 2;
+    uint16_t mid = min + (max - min) / 2;
 
     if (value <= min)
     {

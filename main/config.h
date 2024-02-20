@@ -35,14 +35,14 @@ struct basic_data
 #define I2C_SDA_PIN             2
 #define I2C_SCL_PIN             3
 
-#define UART_PORT               UART_NUM_0
+#define UART_PORT               UART_NUM_1
 #define UART_TX_PIN             4
 #define UART_RX_PIN             5
 
 #define RESET_COUNT             3
 #define RESET_TIMEOUT           3000
 
-#define CO2_MIN_VALUE           700
+#define CO2_MIN_VALUE           400
 #define CO2_MAX_VALUE           1500
 
 #define PM25_MIN_VALUE          0
