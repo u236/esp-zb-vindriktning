@@ -127,7 +127,7 @@ static void time_task(void *arg)
     while (true)
     {
         esp_zb_zcl_read_attr_cmd_req(&request);
-        vTaskDelay(12 * 3600 * 1000); // TODO: read time twice a day?
+        vTaskDelay(pdMS_TO_TICKS(12 * 3600 * 1000)); // TODO: read time twice a day?
     }
 }
 

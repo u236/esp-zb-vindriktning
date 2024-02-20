@@ -5,12 +5,13 @@
 #include <esp_log.h>
 #include <esp_zigbee_core.h>
 #include "config.h"
+#include "led.h"
 #include "scd40.h"
 #include "zigbee.h"
 
 static const char *tag = "scd40";
 
-static uint8_t scd40_crc(const uint8_t *data)
+static uint8_t get_crc(const uint8_t *data)
 {
     uint8_t crc = 0xFF;
 
@@ -25,7 +26,7 @@ static uint8_t scd40_crc(const uint8_t *data)
     return crc;
 }
 
-static void scd40_command(uint16_t command, uint16_t delay)
+static void send_command(uint16_t command, uint16_t delay)
 {
     i2c_cmd_handle_t link = i2c_cmd_link_create();
 
@@ -38,10 +39,10 @@ static void scd40_command(uint16_t command, uint16_t delay)
     i2c_master_cmd_begin(I2C_PORT, link, 1000);
 	i2c_cmd_link_delete(link);
 
-    vTaskDelay(delay);
+    vTaskDelay(pdMS_TO_TICKS(delay));
 }
 
-static bool scd40_read(uint16_t *data, uint8_t count)
+static bool read_data(uint16_t *data, uint8_t count)
 {
     i2c_cmd_handle_t link = i2c_cmd_link_create();
     uint8_t buffer[count * 3];
@@ -58,7 +59,7 @@ static bool scd40_read(uint16_t *data, uint8_t count)
     {
         uint8_t *item = buffer + i * 3;
 
-        if (item[2] != scd40_crc(item))
+        if (item[2] != get_crc(item))
             return false;
 
         data[i] = item[0] << 8 | item[1];
@@ -72,6 +73,7 @@ static void scd40_task(void *arg)
     (void) arg;
 
     i2c_config_t i2c;
+    TickType_t tick;
     uint16_t buffer[3];
 
     memset(&i2c, 0, sizeof(i2c));
@@ -84,12 +86,12 @@ static void scd40_task(void *arg)
     i2c_driver_install(I2C_PORT, i2c.mode, 0, 0, 0);
     i2c_param_config(I2C_PORT, &i2c);
 
-    scd40_command(SCD40_WAKE_UP, 20);
-    scd40_command(SCD40_STOP_PERIODIC_MEASUREMENT, 500);
-    scd40_command(SCD40_REINIT, 20);
-    scd40_command(SCD40_GET_SERIAL_NUMBER, 1);
+    send_command(SCD40_WAKE_UP, 20);
+    send_command(SCD40_STOP_PERIODIC_MEASUREMENT, 500);
+    send_command(SCD40_REINIT, 20);
+    send_command(SCD40_GET_SERIAL_NUMBER, 1);
 
-    if (scd40_read(buffer, 3))
+    if (read_data(buffer, 3))
     {
         ESP_LOGI(tag, "Serial number is %04X%04X%04X", buffer[0], buffer[1], buffer[2]);
     }
@@ -98,14 +100,15 @@ static void scd40_task(void *arg)
         ESP_LOGE(tag, "Serial number request failed");
     }
 
-    scd40_command(SCD40_START_PERIODIC_MEASUREMENT, 1);
+    send_command(SCD40_START_PERIODIC_MEASUREMENT, 1);
+    tick = xTaskGetTickCount();
 
     while (true)
     {
-        vTaskDelay(5000);
-        scd40_command(SCD40_READ_MEASUREMENT, 1);
+        vTaskDelayUntil(&tick, pdMS_TO_TICKS(5000));
+        send_command(SCD40_READ_MEASUREMENT, 1);
 
-        if (scd40_read(buffer, 3))
+        if (read_data(buffer, 3))
         {
             float value = buffer[0] / 1e6;
 
@@ -113,6 +116,7 @@ static void scd40_task(void *arg)
                 esp_zb_zcl_set_attribute_val(DEFAULT_ENDPOINT, ESP_ZB_ZCL_CLUSTER_ID_CARBON_DIOXIDE_MEASUREMENT, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, ESP_ZB_ZCL_ATTR_CARBON_DIOXIDE_MEASUREMENT_MEASURED_VALUE_ID, &value, false);
 
             ESP_LOGI(tag, "CO2 is %d ppm", buffer[0]);
+            led_set_co2(buffer[0]);
             continue;
         }
 

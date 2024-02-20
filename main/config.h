@@ -29,6 +29,7 @@ struct basic_data
 
 #define LED_PIN                 10
 #define LED_COUNT               6
+#define LED_MAX_LEVEL           50
 
 #define I2C_PORT                I2C_NUM_0
 #define I2C_SDA_PIN             2
@@ -40,5 +41,11 @@ struct basic_data
 
 #define RESET_COUNT             3
 #define RESET_TIMEOUT           3000
+
+#define CO2_MIN_VALUE           700
+#define CO2_MAX_VALUE           1500
+
+#define PM25_MIN_VALUE          0
+#define PM25_MAX_VALUE          55
 
 #endif

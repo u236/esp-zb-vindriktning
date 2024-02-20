@@ -2,5 +2,7 @@
 #define LED_H
 
 void led_init(void);
+void led_set_co2(uint16_t value);
+void led_set_pm25(uint16_t value);
 
 #endif

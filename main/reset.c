@@ -119,7 +119,7 @@ static void reset_task(void *arg)
     }
 
     reset_count_update(count);
-    vTaskDelay(RESET_TIMEOUT);
+    vTaskDelay(pdMS_TO_TICKS(RESET_TIMEOUT));
 
     if (!reset_flag)
     {
