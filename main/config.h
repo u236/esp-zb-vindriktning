@@ -29,7 +29,7 @@ struct basic_data
 
 #define LED_PIN                 10
 #define LED_COUNT               6
-#define LED_MAX_LEVEL           50
+#define LED_DEFAULT_LEVEL       50
 
 #define I2C_PORT                I2C_NUM_0
 #define I2C_SDA_PIN             2

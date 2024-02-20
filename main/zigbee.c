@@ -6,6 +6,7 @@
 #include "esp_ota_ops.h"
 #include "esp_zigbee_core.h"
 #include "config.h"
+#include "led.h"
 #include "reset.h"
 
 static const char *tag = "zigbee";
@@ -21,14 +22,45 @@ static void set_zcl_string(char *buffer, char *value)
     memcpy(buffer + 1, value, buffer[0]);
 }
 
-static esp_err_t ota_handler(esp_zb_zcl_ota_upgrade_value_message_t messsage)
+static esp_err_t attribute_handler(esp_zb_zcl_set_attr_value_message_t *message)
+{
+    if (message->info.dst_endpoint != DEFAULT_ENDPOINT || message->info.status != ESP_ZB_ZCL_STATUS_SUCCESS)
+        return ESP_FAIL;
+
+    switch (message->info.cluster)
+    {
+        case ESP_ZB_ZCL_CLUSTER_ID_ON_OFF:
+
+            if (message->attribute.id == ESP_ZB_ZCL_ATTR_ON_OFF_ON_OFF_ID && message->attribute.data.type == ESP_ZB_ZCL_ATTR_TYPE_BOOL && message->attribute.data.value)
+            {
+                led_set_enabled(*(uint8_t*) message->attribute.data.value);
+                return ESP_OK;
+            }
+
+            break;
+
+        case ESP_ZB_ZCL_CLUSTER_ID_LEVEL_CONTROL:
+
+            if (message->attribute.id == ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID && message->attribute.data.type == ESP_ZB_ZCL_ATTR_TYPE_U8 && message->attribute.data.value)
+            {
+                led_set_brightness(*(uint8_t*) message->attribute.data.value);
+                return ESP_OK;
+            }
+
+            break;
+    }
+
+    return ESP_FAIL;
+}
+
+static esp_err_t ota_handler(esp_zb_zcl_ota_upgrade_value_message_t *message)
 {
     esp_err_t result = ESP_OK;
 
-    if (messsage.info.status != ESP_ZB_ZCL_STATUS_SUCCESS)
+    if (message->info.dst_endpoint != DEFAULT_ENDPOINT || message->info.status != ESP_ZB_ZCL_STATUS_SUCCESS)
         return ESP_FAIL;
 
-    switch (messsage.upgrade_status)
+    switch (message->upgrade_status)
     {
         case ESP_ZB_ZCL_OTA_UPGRADE_STATUS_START:
 
@@ -46,12 +78,12 @@ static esp_err_t ota_handler(esp_zb_zcl_ota_upgrade_value_message_t messsage)
 
         case ESP_ZB_ZCL_OTA_UPGRADE_STATUS_RECEIVE:
 
-            ota_size = messsage.ota_header.image_size;
-            ota_offset += messsage.payload_size;
+            ota_size = message->ota_header.image_size;
+            ota_offset += message->payload_size;
 
             ESP_LOGI(tag, "OTA upgrade received %06ld/%ld bytes", ota_offset, ota_size);
 
-            if (messsage.payload_size && messsage.payload && (result = esp_ota_write(ota_handle, (const void*) messsage.payload, messsage.payload_size)) != ESP_OK)
+            if (message->payload_size && message->payload && (result = esp_ota_write(ota_handle, (const void*) message->payload, message->payload_size)) != ESP_OK)
                 ESP_LOGE(tag, "OTA uprage write failed, status: %s", esp_err_to_name(result));
 
             break;
@@ -64,7 +96,7 @@ static esp_err_t ota_handler(esp_zb_zcl_ota_upgrade_value_message_t messsage)
             if ((result = esp_ota_set_boot_partition(ota_partition)) != ESP_OK)
                 ESP_LOGE(tag, "OTA uprage set boot partition failed, status: %s", esp_err_to_name(result));
 
-            ESP_LOGI(tag, "OTA uprage finished: version: 0x%lx, manufacturer code: 0x%x, image type: 0x%x, total size: %ld", messsage.ota_header.file_version, messsage.ota_header.manufacturer_code, messsage.ota_header.image_type, messsage.ota_header.image_size);
+            ESP_LOGI(tag, "OTA uprage finished: version: 0x%lx, manufacturer code: 0x%x, image type: 0x%x, total size: %ld", message->ota_header.file_version, message->ota_header.manufacturer_code, message->ota_header.image_type, message->ota_header.image_size);
             esp_restart();
             break;
 
@@ -79,7 +111,7 @@ static esp_err_t ota_handler(esp_zb_zcl_ota_upgrade_value_message_t messsage)
             break;
 
         default:
-            ESP_LOGI(tag, "OTA uprage status: 0x%04x", messsage.upgrade_status);
+            ESP_LOGI(tag, "OTA uprage status: 0x%04x", message->upgrade_status);
             break;
     }
 
@@ -90,10 +122,13 @@ static esp_err_t action_handler(esp_zb_core_action_callback_id_t callback, const
 {
     switch (callback)
     {
-        case ESP_ZB_CORE_OTA_UPGRADE_VALUE_CB_ID:
-            return ota_handler(*(esp_zb_zcl_ota_upgrade_value_message_t*) message);
+        case ESP_ZB_CORE_SET_ATTR_VALUE_CB_ID:
+            return attribute_handler((esp_zb_zcl_set_attr_value_message_t*) message);
 
-        // TODO: set time here
+        case ESP_ZB_CORE_OTA_UPGRADE_VALUE_CB_ID:
+            return ota_handler((esp_zb_zcl_ota_upgrade_value_message_t*) message);
+
+        // TODO: set time here?
         // case ESP_ZB_CORE_CMD_READ_ATTR_RESP_CB_ID:
         // {
         //     const esp_zb_zcl_cmd_read_attr_resp_message_t *data = message;
@@ -139,9 +174,11 @@ static void zigbee_task(void *arg)
     esp_zb_cfg_t zigbee_config;
     esp_zb_zcl_ota_upgrade_client_variable_t ota_data;
     esp_zb_ota_cluster_cfg_t ota_config;
+    esp_zb_on_off_cluster_cfg_t on_off_config;
+    esp_zb_level_cluster_cfg_t level_config;
     esp_zb_carbon_dioxide_measurement_cluster_cfg_t co2_config;
     esp_zb_pm2_5_measurement_cluster_cfg_t pm25_config;
-    esp_zb_attribute_list_t *basic_cluster, *time_cluster, *ota_cluster, *co2_cluster, *pm25_cluster;
+    esp_zb_attribute_list_t *basic_cluster, *time_cluster, *ota_cluster, *on_off_cluster, *level_cluster, *co2_cluster, *pm25_cluster;
     esp_zb_cluster_list_t *cluster_list = esp_zb_zcl_cluster_list_create();
     esp_zb_ep_list_t *endpoint_list = esp_zb_ep_list_create();
 
@@ -149,6 +186,8 @@ static void zigbee_task(void *arg)
     memset(&zigbee_config, 0, sizeof(zigbee_config));
     memset(&ota_config, 0, sizeof(ota_config));
     memset(&ota_data, 0, sizeof(ota_data));
+    memset(&on_off_config, 0, sizeof(on_off_config));
+    memset(&level_config, 0, sizeof(level_config));
     memset(&co2_config, 0, sizeof(co2_config));
     memset(&pm25_config, 0, sizeof(co2_config));
 
@@ -167,12 +206,16 @@ static void zigbee_task(void *arg)
     ota_config.ota_upgrade_image_type = OTA_IMAGE_TYPE;
     ota_config.ota_upgrade_downloaded_file_ver = OTA_FILE_VERSION;
 
+    on_off_config.on_off = led_enabled();
+    level_config.current_level = led_brightness();
     co2_config.max_measured_value = 0.002; // 2000 / 1e6
     pm25_config.max_measured_value = 1000;
 
     basic_cluster = esp_zb_zcl_attr_list_create(ESP_ZB_ZCL_CLUSTER_ID_BASIC);
     time_cluster = esp_zb_zcl_attr_list_create(ESP_ZB_ZCL_CLUSTER_ID_TIME);
     ota_cluster = esp_zb_ota_cluster_create(&ota_config);
+    on_off_cluster = esp_zb_on_off_cluster_create(&on_off_config);
+    level_cluster = esp_zb_level_cluster_create(&level_config);
     co2_cluster = esp_zb_carbon_dioxide_measurement_cluster_create(&co2_config);
     pm25_cluster = esp_zb_pm2_5_measurement_cluster_create(&pm25_config);
 
@@ -191,6 +234,8 @@ static void zigbee_task(void *arg)
     esp_zb_cluster_list_add_basic_cluster(cluster_list, basic_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
     esp_zb_cluster_list_add_time_cluster(cluster_list, time_cluster, ESP_ZB_ZCL_CLUSTER_CLIENT_ROLE);
     esp_zb_cluster_list_add_ota_cluster(cluster_list, ota_cluster, ESP_ZB_ZCL_CLUSTER_CLIENT_ROLE);
+    esp_zb_cluster_list_add_on_off_cluster(cluster_list, on_off_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
+    esp_zb_cluster_list_add_level_cluster(cluster_list, level_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
     esp_zb_cluster_list_add_carbon_dioxide_measurement_cluster(cluster_list, co2_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
     esp_zb_cluster_list_add_pm2_5_measurement_cluster(cluster_list, pm25_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
 

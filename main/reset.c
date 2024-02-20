@@ -12,7 +12,7 @@
 static const char *tag = "reset";
 static TaskHandle_t button_handle, timer_handle;
 static gptimer_handle_t timer;
-static uint8_t reset_flag = 0;
+static uint8_t count, reset_flag = 0;
 
 static void IRAM_ATTR button_handler(void *arg)
 {
@@ -99,18 +99,6 @@ static void reset_task(void *arg)
 {
     (void) arg;
 
-    nvs_handle_t handle;
-    uint8_t count;
-
-    nvs_flash_init_partition("nvs");
-    nvs_open_from_partition("nvs", "nvs", NVS_READONLY, &handle);
-
-    if (nvs_get_u8(handle, "reset_count", &count) != ESP_OK)
-        count = 0;
-
-    nvs_close(handle);
-    count++;
-
     if (count >= RESET_COUNT)
     {
         ESP_LOGW(tag, "Pending");
@@ -132,6 +120,17 @@ static void reset_task(void *arg)
 
 void reset_init(void)
 {
+    nvs_handle_t handle;
+
+    nvs_flash_init_partition("nvs");
+    nvs_open_from_partition("nvs", "nvs", NVS_READONLY, &handle);
+
+    if (nvs_get_u8(handle, "reset_count", &count) != ESP_OK)
+        count = 0;
+
+    nvs_close(handle);
+    count++;
+
     xTaskCreate(button_task, "button", 4096, NULL, 0, &button_handle);
     xTaskCreate(timer_task,  "timer",  4096, NULL, 0, &timer_handle);
     xTaskCreate(reset_task,  "reset",  4096, NULL, 5, NULL);

@@ -33,9 +33,9 @@ static void pm1006_task(void *arg)
         vTaskDelayUntil(&tick, pdMS_TO_TICKS(5000));
 
         uart_write_bytes(UART_PORT, command, sizeof(command));
-        uart_wait_tx_done(UART_PORT, pdMS_TO_TICKS(100));
+        uart_wait_tx_done(UART_PORT, pdMS_TO_TICKS(1000));
 
-        if ((length = uart_read_bytes(UART_PORT, buffer, sizeof(buffer) - 1, pdMS_TO_TICKS(100))) == 20 && !memcmp(buffer, header, sizeof(header)))
+        if ((length = uart_read_bytes(UART_PORT, buffer, sizeof(buffer) - 1, pdMS_TO_TICKS(1000))) == 20 && !memcmp(buffer, header, sizeof(header)))
         {
             uint8_t checksum = 0;
 
