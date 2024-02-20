@@ -1,0 +1,8 @@
+nvs,        data, nvs,      0x9000,  32K,
+otadata,    data, ota,      ,        8K,
+phy_init,   data, phy,      ,        4K,
+zb_storage, data, fat,      ,        16K,
+zb_fct,     data, fat,      ,        1K,
+factory,    app,  factory,  ,        960K,
+ota_0,      app,  ota_0,    ,        960K
+
