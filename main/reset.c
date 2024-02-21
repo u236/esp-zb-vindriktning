@@ -89,8 +89,8 @@ static void timer_task(void *arg)
     gptimer_enable(timer);
 
     vTaskSuspend(NULL);
-    reset_count_update(0);
-    esp_zb_factory_reset();
+    reset_update_count(0);
+    reset_to_factory();
 }
 
 static void reset_task(void *arg)
@@ -104,16 +104,17 @@ static void reset_task(void *arg)
         count = 0;
     }
 
-    reset_count_update(count);
+    reset_update_count(count);
     vTaskDelay(pdMS_TO_TICKS(RESET_TIMEOUT));
 
     if (!reset_flag)
     {
-        reset_count_update(0);
+        reset_update_count(0);
         vTaskDelete(NULL);
     }
 
-    esp_zb_factory_reset();
+    reset_to_factory();
+    vTaskDelete(NULL);
 }
 
 void reset_init(void)
@@ -134,7 +135,7 @@ void reset_init(void)
     xTaskCreate(reset_task,  "reset",  4096, NULL, 5, NULL);
 }
 
-void reset_count_update(uint8_t count)
+void reset_update_count(uint8_t count)
 {
     nvs_handle_t handle;
     uint8_t check = 0;
@@ -153,10 +154,13 @@ void reset_count_update(uint8_t count)
     nvs_close(handle);
 }
 
+void reset_to_factory(void)
+{
+    nvs_flash_erase_partition("nvs");
+    esp_zb_factory_reset();
+}
+
 uint8_t reset_pending(void)
 {
     return reset_flag;
 }
-
-
-// TODO: reset led and fan

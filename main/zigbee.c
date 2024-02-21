@@ -276,7 +276,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *data)
             if (error != ESP_OK)
             {
                 ESP_LOGE(tag, "Failed to initialize ZigBee stack (status: %d)", error);
-                reset_count_update(0);
+                reset_update_count(0);
             }
 
             esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
@@ -306,7 +306,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *data)
         case ESP_ZB_ZDO_SIGNAL_LEAVE:
 
             if (((esp_zb_zdo_signal_leave_params_t*) esp_zb_app_signal_get_params(data->p_app_signal))->leave_type == ESP_ZB_NWK_LEAVE_TYPE_RESET)
-                esp_zb_factory_reset();
+                reset_to_factory();
 
             break;
 
