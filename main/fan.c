@@ -1,11 +1,10 @@
 #include <string.h>
 #include "driver/ledc.h"
-#include "config.h"
 #include "esp_log.h"
+#include "config.h"
 #include "nvs_flash.h"
 
-// TODO: add logs?
-
+static const char *tag = "fan";
 static uint8_t mode;
 
 static void update_pwm(void)
@@ -20,6 +19,7 @@ static void update_pwm(void)
     }
 
     ledc_update_duty(PWM_MODE, PWM_CHANNEL);
+    ESP_LOGI(tag, "Mode is %d", mode);
 }
 
 void fan_init(void)

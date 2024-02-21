@@ -1,11 +1,11 @@
 #include "config.h"
 #include "nvs_flash.h"
 #include "led_strip.h"
+#include "esp_log.h"
 #include "reset.h"
 #include "zigbee.h"
 
-// TODO: add logs?
-
+static const char *tag = "led";
 static led_strip_handle_t led_handle;
 static uint8_t enabled, brightness;
 static uint16_t co2_value = 0, pm25_value = 0;
@@ -42,6 +42,11 @@ static void set_color(uint16_t min, uint16_t max, uint16_t value, uint8_t level,
         color[0] = level;
         color[1] = (uint8_t) ((float) level / (max - mid) * (max - value));
     }
+}
+
+static void print_log(void)
+{
+    ESP_LOGI(tag, "%s, brightness is %d", enabled ? "Enabled" : "Disabled", brightness);
 }
 
 static void led_task(void *arg)
@@ -142,6 +147,8 @@ void led_init(void)
         brightness = LED_DEFAULT_LEVEL;
 
     nvs_close(handle);
+    print_log();
+
     xTaskCreate(led_task, "led", 8192, NULL, 0, NULL);
 }
 
@@ -153,6 +160,9 @@ void led_set_enabled(uint8_t value)
         return;
 
     enabled = value;
+
+    if (!enabled || brightness)
+        print_log();
 
     nvs_flash_init_partition("nvs");
     nvs_open_from_partition("nvs", "nvs", NVS_READWRITE, &handle);
@@ -169,6 +179,9 @@ void led_set_brightness(uint8_t value)
         return;
 
     brightness = value;
+
+    if (brightness)
+        print_log();
 
     nvs_flash_init_partition("nvs");
     nvs_open_from_partition("nvs", "nvs", NVS_READWRITE, &handle);
