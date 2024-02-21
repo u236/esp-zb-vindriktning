@@ -149,7 +149,7 @@ void led_init(void)
     nvs_close(handle);
     print_log();
 
-    xTaskCreate(led_task, "led", 8192, NULL, 0, NULL);
+    xTaskCreate(led_task, "led", 4096, NULL, 0, NULL);
 }
 
 void led_set_enabled(uint8_t value)

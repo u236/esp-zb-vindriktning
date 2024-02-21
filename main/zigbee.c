@@ -1,5 +1,6 @@
 
 #include <string.h>
+#include <sys/time.h>
 #include "esp_log.h"
 #include "esp_ota_ops.h"
 #include "esp_zigbee_core.h"
@@ -21,7 +22,7 @@ static void set_zcl_string(char *buffer, char *value)
     memcpy(buffer + 1, value, buffer[0]);
 }
 
-static esp_err_t attribute_handler(esp_zb_zcl_set_attr_value_message_t *message)
+static esp_err_t set_attribute_handler(esp_zb_zcl_set_attr_value_message_t *message)
 {
     if (message->info.dst_endpoint != DEFAULT_ENDPOINT || message->info.status != ESP_ZB_ZCL_STATUS_SUCCESS)
         return ESP_FAIL;
@@ -127,22 +128,42 @@ static esp_err_t ota_handler(esp_zb_zcl_ota_upgrade_value_message_t *message)
     return result;
 }
 
+static esp_err_t read_attribute_handler(esp_zb_zcl_cmd_read_attr_resp_message_t *message)
+{
+    if (message->info.dst_endpoint != DEFAULT_ENDPOINT || message->info.status != ESP_ZB_ZCL_STATUS_SUCCESS)
+        return ESP_FAIL;
+
+    switch (message->info.cluster)
+    {
+        case ESP_ZB_ZCL_CLUSTER_ID_TIME:
+
+            if (message->variables->attribute.id == ESP_ZB_ZCL_ATTR_TIME_LOCAL_TIME_ID && message->variables->attribute.data.type == ESP_ZB_ZCL_ATTR_TYPE_U32 && message->variables->attribute.data.value)
+            {
+                struct timeval tv;
+                tv.tv_sec = *(uint32_t*) message->variables->attribute.data.value + 946684800;
+                ESP_LOGI(tag, "Server timestamp is %lld", tv.tv_sec);
+                settimeofday(&tv, NULL);
+                return ESP_OK;
+            }
+
+            break;
+    }
+
+    return ESP_FAIL;
+}
+
 static esp_err_t action_handler(esp_zb_core_action_callback_id_t callback, const void *message)
 {
     switch (callback)
     {
         case ESP_ZB_CORE_SET_ATTR_VALUE_CB_ID:
-            return attribute_handler((esp_zb_zcl_set_attr_value_message_t*) message);
+            return set_attribute_handler((esp_zb_zcl_set_attr_value_message_t*) message);
 
         case ESP_ZB_CORE_OTA_UPGRADE_VALUE_CB_ID:
             return ota_handler((esp_zb_zcl_ota_upgrade_value_message_t*) message);
 
-        // TODO: set time here?
-        // case ESP_ZB_CORE_CMD_READ_ATTR_RESP_CB_ID:
-        // {
-        //     const esp_zb_zcl_cmd_read_attr_resp_message_t *data = message;
-        //     return ESP_OK;
-        // }
+        case ESP_ZB_CORE_CMD_READ_ATTR_RESP_CB_ID:
+            return read_attribute_handler((esp_zb_zcl_cmd_read_attr_resp_message_t*) message);
 
         case ESP_ZB_CORE_CMD_DEFAULT_RESP_CB_ID:
             return ESP_OK;
@@ -155,7 +176,7 @@ static esp_err_t action_handler(esp_zb_core_action_callback_id_t callback, const
 
 static void time_task(void *arg)
 {
-   (void) arg;
+    (void) arg;
 
     esp_zb_zcl_read_attr_cmd_t request;
     uint16_t attribute_id = ESP_ZB_ZCL_ATTR_TIME_LOCAL_TIME_ID;

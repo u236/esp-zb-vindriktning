@@ -53,6 +53,6 @@ struct basic_data
 #define CO2_MAX_VALUE           1500
 
 #define PM25_MIN_VALUE          0
-#define PM25_MAX_VALUE          55
+#define PM25_MAX_VALUE          100
 
 #endif

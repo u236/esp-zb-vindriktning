@@ -132,7 +132,7 @@ void reset_init(void)
 
     xTaskCreate(button_task, "button", 4096, NULL, 0, &button_handle);
     xTaskCreate(timer_task,  "timer",  4096, NULL, 0, &timer_handle);
-    xTaskCreate(reset_task,  "reset",  4096, NULL, 5, NULL);
+    xTaskCreate(reset_task,  "reset",  4096, NULL, 0, NULL);
 }
 
 void reset_update_count(uint8_t count)
