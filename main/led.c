@@ -1,5 +1,3 @@
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "config.h"
 #include "nvs_flash.h"
 #include "led_strip.h"

@@ -1,8 +1,6 @@
 #include <string.h>
 #include "driver/gpio.h"
 #include "driver/gptimer.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_zigbee_core.h"
 #include "nvs_flash.h"
