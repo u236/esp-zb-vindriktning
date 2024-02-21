@@ -72,19 +72,19 @@ static void scd40_task(void *arg)
 {
     (void) arg;
 
-    i2c_config_t i2c;
+    i2c_config_t config;
     TickType_t tick;
     uint16_t buffer[3];
 
-    memset(&i2c, 0, sizeof(i2c));
+    memset(&config, 0, sizeof(config));
 
-    i2c.mode = I2C_MODE_MASTER;
-    i2c.sda_io_num = I2C_SDA_PIN;
-    i2c.scl_io_num = 3; //I2C_SCL_PIN;
-    i2c.master.clk_speed = 100000;
+    config.mode = I2C_MODE_MASTER;
+    config.sda_io_num = I2C_SDA_PIN;
+    config.scl_io_num = 3; //I2C_SCL_PIN;
+    config.master.clk_speed = 100000;
 
-    i2c_driver_install(I2C_PORT, i2c.mode, 0, 0, 0);
-    i2c_param_config(I2C_PORT, &i2c);
+    i2c_driver_install(I2C_PORT, config.mode, 0, 0, 0);
+    i2c_param_config(I2C_PORT, &config);
 
     send_command(SCD40_WAKE_UP, 20);
     send_command(SCD40_STOP_PERIODIC_MEASUREMENT, 500);

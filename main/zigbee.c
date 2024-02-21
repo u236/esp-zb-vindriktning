@@ -6,6 +6,7 @@
 #include "esp_ota_ops.h"
 #include "esp_zigbee_core.h"
 #include "config.h"
+#include "fan.h"
 #include "led.h"
 #include "reset.h"
 
@@ -44,6 +45,16 @@ static esp_err_t attribute_handler(esp_zb_zcl_set_attr_value_message_t *message)
             if (message->attribute.id == ESP_ZB_ZCL_ATTR_LEVEL_CONTROL_CURRENT_LEVEL_ID && message->attribute.data.type == ESP_ZB_ZCL_ATTR_TYPE_U8 && message->attribute.data.value)
             {
                 led_set_brightness(*(uint8_t*) message->attribute.data.value);
+                return ESP_OK;
+            }
+
+            break;
+
+        case ESP_ZB_ZCL_CLUSTER_ID_FAN_CONTROL:
+
+            if (message->attribute.id == ESP_ZB_ZCL_ATTR_FAN_CONTROL_FAN_MODE_ID && message->attribute.data.type == ESP_ZB_ZCL_ATTR_TYPE_8BIT_ENUM && message->attribute.data.value)
+            {
+                fan_set_mode(*(uint8_t*) message->attribute.data.value);
                 return ESP_OK;
             }
 
@@ -176,9 +187,10 @@ static void zigbee_task(void *arg)
     esp_zb_ota_cluster_cfg_t ota_config;
     esp_zb_on_off_cluster_cfg_t on_off_config;
     esp_zb_level_cluster_cfg_t level_config;
+    esp_zb_fan_control_cluster_cfg_t fan_config;
     esp_zb_carbon_dioxide_measurement_cluster_cfg_t co2_config;
     esp_zb_pm2_5_measurement_cluster_cfg_t pm25_config;
-    esp_zb_attribute_list_t *basic_cluster, *time_cluster, *ota_cluster, *on_off_cluster, *level_cluster, *co2_cluster, *pm25_cluster;
+    esp_zb_attribute_list_t *basic_cluster, *time_cluster, *ota_cluster, *on_off_cluster, *level_cluster, *fan_cluster, *co2_cluster, *pm25_cluster;
     esp_zb_cluster_list_t *cluster_list = esp_zb_zcl_cluster_list_create();
     esp_zb_ep_list_t *endpoint_list = esp_zb_ep_list_create();
 
@@ -188,8 +200,9 @@ static void zigbee_task(void *arg)
     memset(&ota_data, 0, sizeof(ota_data));
     memset(&on_off_config, 0, sizeof(on_off_config));
     memset(&level_config, 0, sizeof(level_config));
+    memset(&fan_config, 0, sizeof(fan_config));
     memset(&co2_config, 0, sizeof(co2_config));
-    memset(&pm25_config, 0, sizeof(co2_config));
+    memset(&pm25_config, 0, sizeof(pm25_config));
 
     platform_config.radio_config.radio_mode = RADIO_MODE_NATIVE;
     platform_config.host_config.host_connection_mode = HOST_CONNECTION_MODE_NONE;
@@ -208,6 +221,7 @@ static void zigbee_task(void *arg)
 
     on_off_config.on_off = led_enabled();
     level_config.current_level = led_brightness();
+    fan_config.fan_mode = fan_mode();
     co2_config.max_measured_value = 0.002; // 2000 / 1e6
     pm25_config.max_measured_value = 1000;
 
@@ -216,6 +230,7 @@ static void zigbee_task(void *arg)
     ota_cluster = esp_zb_ota_cluster_create(&ota_config);
     on_off_cluster = esp_zb_on_off_cluster_create(&on_off_config);
     level_cluster = esp_zb_level_cluster_create(&level_config);
+    fan_cluster = esp_zb_fan_control_cluster_create(&fan_config);
     co2_cluster = esp_zb_carbon_dioxide_measurement_cluster_create(&co2_config);
     pm25_cluster = esp_zb_pm2_5_measurement_cluster_create(&pm25_config);
 
@@ -236,6 +251,7 @@ static void zigbee_task(void *arg)
     esp_zb_cluster_list_add_ota_cluster(cluster_list, ota_cluster, ESP_ZB_ZCL_CLUSTER_CLIENT_ROLE);
     esp_zb_cluster_list_add_on_off_cluster(cluster_list, on_off_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
     esp_zb_cluster_list_add_level_cluster(cluster_list, level_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
+    esp_zb_cluster_list_add_fan_control_cluster(cluster_list, fan_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
     esp_zb_cluster_list_add_carbon_dioxide_measurement_cluster(cluster_list, co2_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
     esp_zb_cluster_list_add_pm2_5_measurement_cluster(cluster_list, pm25_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
 

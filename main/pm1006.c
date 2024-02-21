@@ -14,18 +14,18 @@ static void pm1006_task(void *arg)
 {
     (void) arg;
 
-    uart_config_t uart;
+    uart_config_t config;
     TickType_t tick = xTaskGetTickCount();
     uint8_t command[5] = {0x11, 0x02, 0x0B, 0x01, 0xE1}, header[3] = {0x16, 0x11, 0x0B}, buffer[256], length;
 
-    memset(&uart, 0, sizeof(uart));
+    memset(&config, 0, sizeof(config));
 
-    uart.baud_rate = 9600;
-    uart.data_bits = UART_DATA_8_BITS;
-    uart.stop_bits = UART_STOP_BITS_1;
+    config.baud_rate = 9600;
+    config.data_bits = UART_DATA_8_BITS;
+    config.stop_bits = UART_STOP_BITS_1;
 
     uart_driver_install(UART_PORT, sizeof(buffer), 0, 0, NULL, 0);
-    uart_param_config(UART_PORT, &uart);
+    uart_param_config(UART_PORT, &config);
     uart_set_pin(UART_PORT, UART_TX_PIN, UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 
     while (true)

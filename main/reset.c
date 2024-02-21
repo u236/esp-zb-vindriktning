@@ -159,3 +159,6 @@ uint8_t reset_pending(void)
 {
     return reset_flag;
 }
+
+
+// TODO: reset led and fan
